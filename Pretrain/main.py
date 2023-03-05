@@ -51,9 +51,9 @@ def main():
             contrast_pred_2 = model_out["contrast_pred_2"]
             pred_mask_region_position = model_out["pred_mask_region_position"]
             mask_region_position_label = model_out["mask_position_lables"]
-            # loss_rec = forward_loss_reconstruct_mask(x_rec, labels, mask_images, mask_value=0.0)
+            loss_rec = forward_loss_reconstruct_mask(x_rec, labels, mask_images, mask_value=0.0)
             # loss_rec = forward_loss_reconstruct(x_rec, labels)
-            loss_rec = mse_loss(x_rec, labels)
+            # loss_rec = mse_loss(x_rec, labels)
             loss_mask_region = forward_loss_mask(pred_mask_region, mask_labels)
             position_pred = (torch.sigmoid(pred_mask_region_position) > 0.5).float()
             position_pred_num_region = position_pred.sum(dim=-1)
@@ -69,7 +69,7 @@ def main():
             else :
                 print(f"loss_rec is {loss_rec}")
             
-            loss = loss_rec + 0.1 * loss_mask_region + 0.1 * loss_position + 0.001 * loss_consistency + 0.001 * loss_contrast
+            loss = loss_rec + 0.1 * loss_mask_region + 0.1 * loss_position + 0.01 * loss_consistency + 0.1 * loss_contrast
             loss.backward()
             if args.grad_clip:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
@@ -111,12 +111,7 @@ def main():
                 val_loss_recon = val_losses[1]
                 if val_loss_recon < best_val:
                     best_val = val_loss_recon
-                    checkpoint = {
-                        "global_step": global_step,
-                        "state_dict": model.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                    }
-                    # save_ckp(checkpoint, logdir + "/model_bestValRMSE.pt")
+                   
                     torch.save(model.state_dict(), logdir + "/model_bestValRMSE.pt")
                     print(
                         "Model was saved ! Best Recon. Val Loss: {:.4f}, Recon. Val Loss: {:.4f}".format(
@@ -153,7 +148,7 @@ def main():
                 pred_mask_region_position = model_out["pred_mask_region_position"]
                 mask_region_position_label = model_out["mask_position_lables"]
                 loss_rec = forward_loss_reconstruct_mask(x_rec, labels, mask_images, mask_value=0.0)
-                loss_rec = forward_loss_reconstruct(x_rec, labels)
+                # loss_rec = forward_loss_reconstruct(x_rec, labels)
                 loss_rec = mse_loss(x_rec, labels)
 
                 num_pred = pred_mask_region.argmax(dim=-1)
@@ -287,38 +282,9 @@ def main():
         from pretrain_models.deep_unet_v2 import DeepUNet
         model = DeepUNet(1, 1, features=[64, 64, 128, 256, 512], 
                         pool_size=((2, 2, 2), (2, 2, 2), (2, 2, 2), (1, 1, 1)), 
-                        select_reconstruct_region=[[0, 0, 0], [12, 12, 12]],
-                        dropout=0.2,
+                        select_reconstruct_region=[[4, 4, 4], [12, 12, 12]],
+                        dropout=0.1,
                         pretrain=True)
-
-    elif args.model_name == "deppunet":
-        from pretrain_models.deep_unet import DeepUNet
-        model = DeepUNet(args.in_channels, args.out_channels, 
-                features=[32, 32, 64, 128, 256, 512], 
-                pool_size=[(2, 2, 2), (2, 2, 2), (2, 2, 2), (2, 2, 2), (2, 2, 2)],
-                pretrain=False,
-                select_reconstruct_region=[[0, 0, 0], [3, 3, 3]])
-        if args.load_pretrain:
-            checkpoints = torch.load(args.pretrain_model_path, map_location="cpu")
-            new_checkpoints = {}
-            
-            for k, v in checkpoints.items():
-                if "decoder_pred" not in k and "ups" not in k:
-                # if "decoder_pred" not in k:
-                    new_checkpoints[k] = v
-
-            model.load_state_dict(new_checkpoints, strict=False)
-            print("load params successed.")
-    
-    elif args.model_name == "swinunetr_8":
-        from pretrain_models.swinunetr_8 import SwinUNETR
-        model = SwinUNETR((96, 96, 96),
-                      in_channels=1,
-                      out_channels=1,
-                      drop_rate=0.1,
-                      feature_size=args.feature_size,
-                      pretrain=True,
-                      select_reconstruct_region=(0, 3))
     
     else :
         from pretrain_models.swinunetr import SwinUNETR
@@ -328,7 +294,7 @@ def main():
                       drop_rate=0.1,
                       feature_size=args.feature_size,
                       pretrain=True,
-                      select_reconstruct_region=(0, 3))
+                      select_reconstruct_region=(1, 3))
 
     model.cuda()
 
