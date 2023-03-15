@@ -1,7 +1,7 @@
 # HybridMIM
 HybridMIM: A Hybrid Masked Image Modeling Framework for 3D Medical Image Segmentation
 
-[]("/imgs/framework.png")
+![](/imgs/framework.png)
 # Pre-training
 
 We support two architecture: UNet and SwinUNETR.
